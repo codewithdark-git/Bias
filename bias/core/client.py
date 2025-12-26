@@ -105,21 +105,72 @@ class NeuronpediaClient:
         >>> for f in features:
         ...     print(f"{f['id']}: {f['description']}")
         """
-        url = f"{self.config.base_url}/search"
-        params = {
-            "model_id": self.config.model_id,
-            "layer": layer or self.config.layer,
-            "sae_id": self.config.sae_id,
-            "query": query,
-            "top_k": top_k
+        # Neuronpedia API v1 search endpoint
+        url = f"{self.config.base_url}/api/search"
+        
+        # Build the request payload for POST request
+        payload = {
+            "modelId": self.config.model_id,
+            "sourceId": self.config.sae_id,
+            "text": query,
+            "selectedLayers": [str(layer or self.config.layer)],
+            "topK": top_k
         }
         
         try:
-            response = self.session.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            return response.json()
+            response = self.session.post(url, json=payload, timeout=30)
+            
+            # Check for non-2xx status codes
+            if response.status_code != 200:
+                print(f"Neuronpedia API returned status {response.status_code}")
+                # Try to get error details
+                try:
+                    error_detail = response.json()
+                    print(f"Error details: {error_detail}")
+                except (ValueError, requests.exceptions.JSONDecodeError):
+                    print(f"Response: {response.text[:200] if response.text else 'Empty'}")
+                return []
+            
+            # Check content type
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' not in content_type:
+                print(f"Unexpected content type: {content_type}")
+                print(f"Response preview: {response.text[:200] if response.text else 'Empty'}")
+                return []
+            
+            # Check for empty response
+            if not response.content or not response.content.strip():
+                print(f"Empty response from Neuronpedia API")
+                return []
+            
+            data = response.json()
+            
+            # Handle different response formats
+            if isinstance(data, dict):
+                # Response might be wrapped in a results key
+                results = data.get('results', data.get('features', []))
+                if isinstance(results, list):
+                    return results
+                return [data] if data else []
+            elif isinstance(data, list):
+                return data
+            else:
+                print(f"Unexpected response format: {type(data)}")
+                return []
+                
+        except requests.exceptions.Timeout:
+            print(f"Request to Neuronpedia timed out")
+            return []
+        except requests.exceptions.ConnectionError as e:
+            print(f"Connection error to Neuronpedia: {e}")
+            return []
         except requests.exceptions.RequestException as e:
             print(f"Error searching Neuronpedia: {e}")
+            return []
+        except (ValueError, requests.exceptions.JSONDecodeError) as e:
+            print(f"Error parsing Neuronpedia response: {e}")
+            if 'response' in locals() and response.text:
+                print(f"Response preview: {response.text[:200]}")
             return []
     
     def get_feature_details(self, feature_id: int) -> Dict[str, Any]:
@@ -147,18 +198,40 @@ class NeuronpediaClient:
         >>> print(details['description'])
         >>> print(f"Activates on: {details['activating_examples'][:3]}")
         """
+        # Neuronpedia feature endpoint format
         url = (
-            f"{self.config.base_url}/feature/"
-            f"{self.config.model_id}/{self.config.layer}/"
-            f"{self.config.sae_id}/{feature_id}"
+            f"{self.config.base_url}/api/feature/"
+            f"{self.config.model_id}/{self.config.sae_id}/"
+            f"{self.config.layer}/{feature_id}"
         )
         
         try:
             response = self.session.get(url, timeout=30)
-            response.raise_for_status()
+            
+            if response.status_code != 200:
+                print(f"Error fetching feature {feature_id}: HTTP {response.status_code}")
+                return {}
+            
+            # Check content type
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' not in content_type:
+                print(f"Unexpected content type for feature {feature_id}: {content_type}")
+                return {}
+            
+            if not response.content or not response.content.strip():
+                print(f"Empty response for feature {feature_id}")
+                return {}
+            
             return response.json()
+            
+        except requests.exceptions.Timeout:
+            print(f"Timeout fetching feature {feature_id}")
+            return {}
         except requests.exceptions.RequestException as e:
             print(f"Error fetching feature {feature_id}: {e}")
+            return {}
+        except (ValueError, requests.exceptions.JSONDecodeError) as e:
+            print(f"Error parsing feature {feature_id} response: {e}")
             return {}
     
     def get_feature_vector(self, feature_id: int) -> Optional[torch.Tensor]:
@@ -314,8 +387,9 @@ class NeuronpediaClient:
             True if connection is successful
         """
         try:
+            # Test connection by checking the main page or API
             response = self.session.get(
-                f"{self.config.base_url}/health",
+                f"{self.config.base_url}",
                 timeout=10
             )
             return response.status_code == 200

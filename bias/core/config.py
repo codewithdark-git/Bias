@@ -47,7 +47,7 @@ class NeuronpediaConfig:
     - Later layers (9+): Task-specific, output-focused features
     """
     api_key: Optional[str] = None
-    base_url: str = "https://neuronpedia.org/api"
+    base_url: str = "https://www.neuronpedia.org"
     model_id: str = "gpt2-small"
     layer: int = 6
     sae_id: str = "res-jb"
