@@ -84,7 +84,7 @@ bias = "bias.cli.main:main"
 bias-cli = "bias.cli.main:main"
 
 [tool.setuptools]
-packages = ["bias", "bias.core", "bias.cli", "bias.utils", "bias.examples"]
+packages = ["bias", "bias.core", "bias.cli", "bias.utils"]
 
 [tool.setuptools.package-data]
 bias = ["py.typed"]
