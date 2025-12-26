@@ -21,14 +21,27 @@ __version__ = "0.1.0"
 __author__ = "codewithdark-git"
 __email__ = "codewithdark90@gmail.com"
 
-# High-level API imports
-from bias.core.config import NeuronpediaConfig, ModelConfig
-from bias.core.client import NeuronpediaClient
-from bias.core.engine import SteeringEngine
-from bias.core.library import ConceptLibrary
+from typing import TYPE_CHECKING
 
-# Convenience imports
-from bias.api import Bias, steer, generate, discover_features
+if TYPE_CHECKING:
+    from bias.core.config import NeuronpediaConfig, ModelConfig
+    from bias.core.client import NeuronpediaClient
+    from bias.core.engine import SteeringEngine
+    from bias.core.library import ConceptLibrary
+    from bias.api import Bias
+
+# Lazy imports to avoid torch dependency during installation
+def __getattr__(name):
+    if name in ("NeuronpediaConfig", "ModelConfig"):
+        from bias.core.config import NeuronpediaConfig, ModelConfig
+        return locals()[name] if name in locals() else globals()[name]
+    elif name in ("NeuronpediaClient", "SteeringEngine", "ConceptLibrary"):
+        from bias.core import NeuronpediaClient, SteeringEngine, ConceptLibrary
+        return locals()[name] if name in locals() else globals()[name]
+    elif name in ("Bias", "steer", "generate", "discover_features"):
+        from bias.api import Bias, steer, generate, discover_features
+        return locals()[name] if name in locals() else globals()[name]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 __all__ = [
     # Main high-level API
