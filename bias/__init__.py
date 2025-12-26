@@ -24,7 +24,7 @@ __email__ = "codewithdark90@gmail.com"
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from bias.core.config import NeuronpediaConfig, ModelConfig
+    from bias.core.config import BiasConfig, NeuronpediaConfig, ModelConfig, configure
     from bias.core.client import NeuronpediaClient
     from bias.core.engine import SteeringEngine
     from bias.core.library import ConceptLibrary
@@ -32,8 +32,8 @@ if TYPE_CHECKING:
 
 # Lazy imports to avoid torch dependency during installation
 def __getattr__(name):
-    if name in ("NeuronpediaConfig", "ModelConfig"):
-        from bias.core.config import NeuronpediaConfig, ModelConfig
+    if name in ("BiasConfig", "NeuronpediaConfig", "ModelConfig", "configure"):
+        from bias.core.config import BiasConfig, NeuronpediaConfig, ModelConfig, configure
         return locals()[name] if name in locals() else globals()[name]
     elif name in ("NeuronpediaClient", "SteeringEngine", "ConceptLibrary"):
         from bias.core import NeuronpediaClient, SteeringEngine, ConceptLibrary
@@ -46,6 +46,8 @@ def __getattr__(name):
 __all__ = [
     # Main high-level API
     "Bias",
+    "BiasConfig",
+    "configure",
     "steer",
     "generate",
     "discover_features",

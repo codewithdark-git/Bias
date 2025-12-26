@@ -7,10 +7,17 @@ Just import and use with minimal configuration.
 
 Examples
 --------
->>> from bias import Bias
+>>> from bias import Bias, BiasConfig
 >>> 
->>> # Quick start - one line setup
+>>> # Method 1: Quick start - one line setup
 >>> bias = Bias("gpt2")
+>>> 
+>>> # Method 2: With configuration object (recommended for API key)
+>>> config = BiasConfig(
+...     api_key="your-neuronpedia-api-key",
+...     model="gpt2",
+... )
+>>> bias = Bias(config=config)
 >>> 
 >>> # Steer and generate
 >>> bias.steer("professional writing")
@@ -26,11 +33,13 @@ from typing import Optional, List, Dict, Any, Union
 import torch
 
 from bias.core.config import (
+    BiasConfig,
     NeuronpediaConfig, 
     ModelConfig, 
     SteeringConfig,
     SUPPORTED_MODELS,
     get_model_config,
+    configure,
 )
 from bias.core.engine import SteeringEngine
 from bias.core.client import NeuronpediaClient
@@ -50,10 +59,13 @@ class Bias:
     
     Parameters
     ----------
-    model : str
+    model : str, optional
         Model name. Can be:
         - A shorthand like "gpt2", "gpt2-medium"
         - A HuggingFace model ID like "meta-llama/Llama-2-7b"
+    config : BiasConfig, optional
+        Configuration object with all settings. If provided,
+        other parameters are ignored.
     layer : int, optional
         Which layer to apply steering to. If not specified,
         uses the recommended layer for the model.
@@ -70,6 +82,8 @@ class Bias:
         The underlying steering engine
     library : ConceptLibrary
         Library for saving/loading concepts
+    config : BiasConfig
+        The configuration being used
     
     Examples
     --------
@@ -80,13 +94,23 @@ class Bias:
     >>> output = bias.generate("Write a business proposal:")
     >>> print(output)
     
-    With custom settings:
+    With configuration object (recommended):
     
-    >>> bias = Bias(
+    >>> from bias import BiasConfig, Bias
+    >>> 
+    >>> config = BiasConfig(
+    ...     api_key="your-neuronpedia-api-key",
     ...     model="gpt2-medium",
     ...     layer=12,
-    ...     device="cuda"
+    ...     device="cuda",
     ... )
+    >>> bias = Bias(config=config)
+    
+    Using environment variable for API key:
+    
+    >>> # Set NEURONPEDIA_API_KEY environment variable
+    >>> config = BiasConfig.from_env(model="gpt2")
+    >>> bias = Bias(config=config)
     
     Using context manager (auto-cleanup):
     
@@ -97,50 +121,39 @@ class Bias:
     
     def __init__(
         self,
-        model: str = "gpt2",
+        model: Optional[str] = None,
+        config: Optional[BiasConfig] = None,
         layer: Optional[int] = None,
         api_key: Optional[str] = None,
         device: str = "auto",
         **kwargs
     ):
-        # Resolve model configuration
-        if model in SUPPORTED_MODELS:
-            model_info = SUPPORTED_MODELS[model]
-            hf_model = model_info["hf_name"]
-            neuronpedia_id = model_info["neuronpedia_id"]
-            default_layer = model_info["recommended_layer"]
-            sae_id = model_info["sae_id"]
+        # If config object is provided, use it directly
+        if config is not None:
+            self.config = config
         else:
-            # Custom model - use provided or default values
-            hf_model = model
-            neuronpedia_id = kwargs.get("neuronpedia_id", model)
-            default_layer = 6
-            sae_id = kwargs.get("sae_id", "res-jb")
+            # Create config from individual parameters
+            self.config = BiasConfig(
+                api_key=api_key,
+                model=model or "gpt2",
+                layer=layer,
+                device=device,
+                **{k: v for k, v in kwargs.items() if k in BiasConfig.__dataclass_fields__}
+            )
         
-        # Create configurations
-        self._neuronpedia_config = NeuronpediaConfig(
-            api_key=api_key,
-            model_id=neuronpedia_id,
-            layer=layer or default_layer,
-            sae_id=sae_id,
-        )
-        
-        self._model_config = ModelConfig(
-            model_name=hf_model,
-            device=device,
-            dtype=kwargs.get("dtype", "float16"),
-        )
+        # Get internal configs from BiasConfig
+        self._neuronpedia_config = self.config.to_neuronpedia_config()
+        self._model_config = self.config.to_model_config()
         
         # Initialize engine
         self.engine = SteeringEngine(
-            model_name=hf_model,
+            model_name=self.config.hf_model_name,
             neuronpedia_config=self._neuronpedia_config,
             model_config=self._model_config,
         )
         
         # Initialize concept library
-        library_path = kwargs.get("library_path", "bias_concepts.json")
-        self.library = ConceptLibrary(library_path)
+        self.library = ConceptLibrary(self.config.library_path)
         
         # Set as global instance
         global _global_instance

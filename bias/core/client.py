@@ -105,20 +105,25 @@ class NeuronpediaClient:
         >>> for f in features:
         ...     print(f"{f['id']}: {f['description']}")
         """
-        # Neuronpedia API v1 search endpoint
-        url = f"{self.config.base_url}/api/search"
+        # Neuronpedia API search endpoint - search by model
+        url = f"{self.config.base_url}/api/explanation/search-model"
         
         # Build the request payload for POST request
+        # API requires: modelId (string), query (string), offset (number, optional)
         payload = {
             "modelId": self.config.model_id,
-            "sourceId": self.config.sae_id,
-            "text": query,
-            "selectedLayers": [str(layer or self.config.layer)],
-            "topK": top_k
+            "query": query,
         }
         
+        # Set up headers
+        headers = {
+            "Content-Type": "application/json",
+        }
+        if self.config.api_key:
+            headers["x-api-key"] = self.config.api_key
+        
         try:
-            response = self.session.post(url, json=payload, timeout=30)
+            response = self.session.post(url, json=payload, headers=headers, timeout=30)
             
             # Check for non-2xx status codes
             if response.status_code != 200:
@@ -146,14 +151,26 @@ class NeuronpediaClient:
             data = response.json()
             
             # Handle different response formats
+            # API returns: { results: [...], resultsCount, hasMore, nextOffset }
             if isinstance(data, dict):
-                # Response might be wrapped in a results key
-                results = data.get('results', data.get('features', []))
+                results = data.get('results', [])
                 if isinstance(results, list):
-                    return results
-                return [data] if data else []
+                    # Limit to top_k results
+                    features = results[:top_k]
+                    # Normalize the response format
+                    normalized = []
+                    for f in features:
+                        normalized.append({
+                            'id': f.get('index', f.get('id')),
+                            'description': f.get('description', ''),
+                            'layer': f.get('layer', str(layer or self.config.layer)),
+                            'modelId': f.get('modelId', self.config.model_id),
+                            'score': f.get('score', 1.0),
+                        })
+                    return normalized
+                return []
             elif isinstance(data, list):
-                return data
+                return data[:top_k]
             else:
                 print(f"Unexpected response format: {type(data)}")
                 return []
@@ -173,14 +190,16 @@ class NeuronpediaClient:
                 print(f"Response preview: {response.text[:200]}")
             return []
     
-    def get_feature_details(self, feature_id: int) -> Dict[str, Any]:
+    def get_feature_details(self, feature_id: int, layer: Optional[str] = None) -> Dict[str, Any]:
         """
         Get detailed information about a specific feature.
         
         Parameters
         ----------
         feature_id : int
-            The feature ID to look up
+            The feature ID (index) to look up
+        layer : str, optional
+            The layer/SAE ID (e.g., "6-res-jb"). If not provided, uses config.
         
         Returns
         -------
@@ -198,15 +217,24 @@ class NeuronpediaClient:
         >>> print(details['description'])
         >>> print(f"Activates on: {details['activating_examples'][:3]}")
         """
-        # Neuronpedia feature endpoint format
+        # Build the layer/SAE ID in the format expected by Neuronpedia
+        # Format: {layer_num}-{sae_id}, e.g., "6-res-jb"
+        if layer is None:
+            layer = f"{self.config.layer}-{self.config.sae_id}"
+        
+        # Neuronpedia feature endpoint: GET /api/feature/{modelId}/{layer}/{index}
         url = (
             f"{self.config.base_url}/api/feature/"
-            f"{self.config.model_id}/{self.config.sae_id}/"
-            f"{self.config.layer}/{feature_id}"
+            f"{self.config.model_id}/{layer}/{feature_id}"
         )
         
+        # Set up headers
+        headers = {}
+        if self.config.api_key:
+            headers["x-api-key"] = self.config.api_key
+        
         try:
-            response = self.session.get(url, timeout=30)
+            response = self.session.get(url, headers=headers, timeout=30)
             
             if response.status_code != 200:
                 print(f"Error fetching feature {feature_id}: HTTP {response.status_code}")
