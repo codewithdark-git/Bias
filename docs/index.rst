@@ -4,7 +4,8 @@ Bias Documentation
 ==================
 
 **Bias** is a Python library for steering Large Language Models using
-interpretable Sparse Autoencoder (SAE) features from Neuronpedia.
+interpretable Sparse Autoencoder (SAE) features. Currently supports Neuronpedia
+integration, with a roadmap to support **any HuggingFace model** via local SAE training.
 
 .. image:: https://img.shields.io/badge/python-3.11+-blue.svg
    :target: https://www.python.org/downloads/
@@ -17,10 +18,13 @@ Quick Example
 
 .. code-block:: python
 
-   from bias import Bias
+   from bias import Bias, BiasConfig
+
+   # Create configuration (API key from environment)
+   config = BiasConfig(model="gpt2")
 
    # Create a steering instance
-   bias = Bias("gpt2")
+   bias = Bias(config=config)
 
    # Steer toward professional writing
    bias.steer("professional formal writing")

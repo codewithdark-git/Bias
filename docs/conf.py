@@ -15,8 +15,8 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'Bias'
 copyright = '2024, codewithdark-git'
 author = 'codewithdark-git'
-release = '0.1.0'
-version = '0.1.0'
+release = '1.0.0'
+version = '1.0.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
