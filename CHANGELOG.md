@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-12-26
+
+### 🚀 First Stable Release!
+
+This release introduces a user-friendly configuration system and improved API stability.
+
+### Added
+
+#### BiasConfig - Unified Configuration
+- New `BiasConfig` class for streamlined configuration
+- Environment variable support (`NEURONPEDIA_API_KEY`, `BIAS_MODEL`, etc.)
+- `BiasConfig.from_env()` for loading config from environment
+- `configure()` helper function for quick setup
+- Automatic API key loading from environment
+
+#### Improved API
+- `Bias` class now accepts `config` parameter
+- Better error handling in Neuronpedia API client
+- Correct API endpoints for Neuronpedia integration
+
+#### Documentation
+- Complete configuration guide
+- API key setup instructions
+- Environment variable documentation
+- Updated examples throughout
+
+### Changed
+- License format updated for newer setuptools compatibility
+- Lazy imports to avoid torch dependency during installation
+
+### Fixed
+- Neuronpedia API endpoint paths
+- JSON parsing error handling
+- Package installation from GitHub
+
+---
+
 ## [0.1.0] - 2025-12-26
 
 ### Initial release! 🎉

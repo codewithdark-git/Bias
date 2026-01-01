@@ -39,7 +39,7 @@ def get_concept_library():
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="bias")
+@click.version_option(version="1.0.0", prog_name="bias")
 def app():
     """
     Bias - LLM Steering with Interpretable SAE Features

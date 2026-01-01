@@ -17,7 +17,7 @@ Quick Start
 For more information, see: https://bias.readthedocs.io
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __author__ = "codewithdark-git"
 __email__ = "codewithdark90@gmail.com"
 

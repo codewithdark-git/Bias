@@ -62,7 +62,7 @@ class NeuronpediaClient:
         self.config = config
         self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": "Bias-Python-Client/0.1.0",
+            "User-Agent": "Bias-Python-Client/1.0.0",
             "Accept": "application/json",
         })
         
